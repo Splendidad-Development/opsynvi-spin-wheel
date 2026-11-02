@@ -71,6 +71,34 @@ const usedChallengeNumbers = computed(
             turn.challenge ? [turn.challenge.number] : [],
         ) ?? [],
 );
+/**
+ * Map each played slice number to the name of the team that played it.
+ */
+function teamNamesBySlice(
+    sliceNumber: (turn: GameTurn) => number | undefined,
+): Record<number, string> {
+    const names: Record<number, string> = {};
+
+    for (const turn of game.value?.turns ?? []) {
+        const number = sliceNumber(turn);
+        const team = game.value?.teams.find(
+            (candidate) => candidate.id === turn.team_id,
+        );
+
+        if (number && team) {
+            names[number] = team.name;
+        }
+    }
+
+    return names;
+}
+
+const questionTeamNames = computed(() =>
+    teamNamesBySlice((turn) => turn.question.number),
+);
+const challengeTeamNames = computed(() =>
+    teamNamesBySlice((turn) => turn.challenge?.number),
+);
 const latestChallengeNumber = computed(
     () =>
         game.value?.turns.findLast((turn) => turn.challenge)?.challenge
@@ -377,6 +405,7 @@ onBeforeUnmount(() => {
                             :used-numbers="usedQuestionNumbers"
                             :active-number="activeTurn?.question.number"
                             :resting-number="latestTurn?.question.number"
+                            :team-names="questionTeamNames"
                         />
                         <GlassButton
                             emphasis
@@ -405,6 +434,7 @@ onBeforeUnmount(() => {
                             :used-numbers="usedChallengeNumbers"
                             :active-number="activeTurn?.challenge?.number"
                             :resting-number="latestChallengeNumber"
+                            :team-names="challengeTeamNames"
                         />
                         <GlassButton
                             emphasis

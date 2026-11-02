@@ -8,12 +8,15 @@ const props = defineProps<{
     activeNumber?: number | null;
     /** Slice to rest on without animating (e.g. after a reload). */
     restingNumber?: number | null;
+    /** Name of the team that played each used slice, keyed by slice number. */
+    teamNames?: Record<number, string>;
 }>();
 
 const SLICES = 15;
 const SLICE_ANGLE = 360 / SLICES;
 const CENTER = 247;
 const RADIUS = 234.35;
+const LABEL_RADIUS = 118;
 const SPIN_DURATION_MS = 4800;
 const REDUCED_MOTION_DURATION_MS = 600;
 
@@ -92,6 +95,17 @@ function slicePath(sliceNumber: number): string {
 const dimmedSlices = computed(() =>
     props.usedNumbers.filter((number) => number !== props.activeNumber),
 );
+
+/**
+ * Team labels run along each slice's centre line, between the hub and the printed number.
+ */
+const teamLabels = computed(() =>
+    Object.entries(props.teamNames ?? {}).map(([number, name]) => ({
+        number: Number(number),
+        name,
+        angle: (Number(number) - 1) * SLICE_ANGLE,
+    })),
+);
 </script>
 
 <template>
@@ -133,6 +147,23 @@ const dimmedSlices = computed(() =>
                     stroke-width="5"
                     stroke-linejoin="round"
                 />
+                <text
+                    v-for="label in teamLabels"
+                    :key="`team-${label.number}`"
+                    :x="CENTER + LABEL_RADIUS"
+                    :y="CENTER"
+                    :transform="`rotate(${label.angle} ${CENTER} ${CENTER})`"
+                    text-anchor="middle"
+                    dominant-baseline="central"
+                    fill="#ffffff"
+                    stroke="#0a1f44"
+                    stroke-width="4"
+                    stroke-linejoin="round"
+                    paint-order="stroke"
+                    class="text-[15px] font-extrabold tracking-wide uppercase"
+                >
+                    {{ label.name }}
+                </text>
             </svg>
         </div>
         <img
