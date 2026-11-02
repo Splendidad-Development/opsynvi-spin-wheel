@@ -1,0 +1,44 @@
+<?php
+
+use App\Models\Challenge;
+use App\Models\Question;
+use App\Models\QuestionOption;
+use Database\Seeders\DatabaseSeeder;
+
+test('the seeders load the 15 Figma questions with exactly one correct answer each', function () {
+    $this->seed(DatabaseSeeder::class);
+
+    expect(Question::count())->toBe(15)
+        ->and(Question::pluck('number')->sort()->values()->all())->toBe(range(1, 15))
+        ->and(QuestionOption::count())->toBe(60)
+        ->and(Challenge::count())->toBe(15);
+
+    Question::with('options')->each(function (Question $question) {
+        expect($question->options->pluck('letter')->all())->toBe(['A', 'B', 'C', 'D'])
+            ->and($question->options->where('is_correct', true))->toHaveCount(1)
+            ->and($question->explanation)->not->toBeEmpty();
+    });
+
+    $first = Question::where('number', 1)->firstOrFail();
+
+    expect($first->prompt)->toBe('What are the two active pharmaceutical ingredients combined in Opsynvi and their respective pharmacological classes?')
+        ->and($first->options()->where('is_correct', true)->value('letter'))->toBe('B');
+});
+
+test('the seeders can be run repeatedly without duplicating content', function () {
+    $this->seed(DatabaseSeeder::class);
+    $this->seed(DatabaseSeeder::class);
+
+    expect(Question::count())->toBe(15)
+        ->and(QuestionOption::count())->toBe(60)
+        ->and(Challenge::count())->toBe(15);
+});
+
+test('re-seeding keeps challenge descriptions entered after the first seed', function () {
+    $this->seed(DatabaseSeeder::class);
+    Challenge::where('number', 5)->update(['description' => 'Act out the Opsynvi tagline.']);
+
+    $this->seed(DatabaseSeeder::class);
+
+    expect(Challenge::where('number', 5)->value('description'))->toBe('Act out the Opsynvi tagline.');
+});
