@@ -319,7 +319,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-    <Head title="Spin the wheel" />
+    <Head title="Spin the Wheel" />
 
     <GameStage>
         <div :class="cn('size-full', { 'cursor-progress': isBusy })">
