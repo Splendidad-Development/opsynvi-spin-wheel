@@ -25,7 +25,7 @@ class InvalidGameActionException extends Exception
      */
     public function render(): JsonResponse
     {
-        $gameSession = $this->gameSession?->fresh() ?? GameSession::current()->first();
+        $gameSession = $this->gameSession?->fresh();
 
         return response()->json([
             'message' => $this->getMessage(),

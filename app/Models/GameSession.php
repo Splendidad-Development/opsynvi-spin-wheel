@@ -13,13 +13,14 @@ use Illuminate\Support\Carbon;
 
 /**
  * @property int $id
+ * @property string|null $player_id
  * @property GameSessionStatus $status
  * @property bool|null $is_current
  * @property Carbon|null $completed_at
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  */
-#[Fillable(['status', 'is_current', 'completed_at'])]
+#[Fillable(['player_id', 'status', 'is_current', 'completed_at'])]
 class GameSession extends Model
 {
     /** @use HasFactory<GameSessionFactory> */
@@ -63,6 +64,16 @@ class GameSession extends Model
     public function scopeCurrent(Builder $query): void
     {
         $query->where('is_current', true);
+    }
+
+    /**
+     * Scope the query to the sessions played on the given device.
+     *
+     * @param  Builder<GameSession>  $query
+     */
+    public function scopeOwnedBy(Builder $query, string $playerId): void
+    {
+        $query->where('player_id', $playerId);
     }
 
     public function isInProgress(): bool

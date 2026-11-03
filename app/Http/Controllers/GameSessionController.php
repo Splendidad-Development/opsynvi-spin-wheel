@@ -2,10 +2,12 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Middleware\IdentifyGamePlayer;
 use App\Http\Resources\GameSessionResource;
 use App\Models\GameSession;
 use App\Services\GameService;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 
 class GameSessionController extends Controller
 {
@@ -14,9 +16,9 @@ class GameSessionController extends Controller
     /**
      * Return the current session's state, or null when no game has been started.
      */
-    public function show(): JsonResponse
+    public function show(Request $request): JsonResponse
     {
-        $session = $this->game->currentSession();
+        $session = $this->game->currentSession(IdentifyGamePlayer::playerId($request));
 
         return response()->json([
             'data' => $session ? GameSessionResource::make($session)->resolve() : null,
@@ -26,9 +28,9 @@ class GameSessionController extends Controller
     /**
      * Start a game ("Get started"), or resume the current one if it already exists.
      */
-    public function store(): GameSessionResource
+    public function store(Request $request): GameSessionResource
     {
-        return GameSessionResource::make($this->game->startOrResume());
+        return GameSessionResource::make($this->game->startOrResume(IdentifyGamePlayer::playerId($request)));
     }
 
     /**

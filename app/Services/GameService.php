@@ -26,28 +26,28 @@ use Illuminate\Validation\ValidationException;
  */
 class GameService
 {
-    public function currentSession(): ?GameSession
+    public function currentSession(string $playerId): ?GameSession
     {
-        return GameSession::current()->first();
+        return GameSession::ownedBy($playerId)->current()->first();
     }
 
     /**
-     * Return the current session, creating one only when none exists.
+     * Return the player's current session, creating one only when none exists.
      *
      * Safe to call repeatedly (page reloads, double clicks, remounts): it never creates a
      * second session while one is current.
      */
-    public function startOrResume(): GameSession
+    public function startOrResume(string $playerId): GameSession
     {
-        if ($session = $this->currentSession()) {
+        if ($session = $this->currentSession($playerId)) {
             return $session;
         }
 
         try {
-            return DB::transaction(fn (): GameSession => $this->createSession());
+            return DB::transaction(fn (): GameSession => $this->createSession($playerId));
         } catch (UniqueConstraintViolationException) {
             // Another request created the current session first; use that one.
-            return GameSession::current()->firstOrFail();
+            return GameSession::ownedBy($playerId)->current()->firstOrFail();
         }
     }
 
@@ -64,7 +64,7 @@ class GameService
                 $session = $this->lockSession($session);
 
                 if (! $session->is_current) {
-                    return GameSession::current()->firstOrFail();
+                    return GameSession::ownedBy($session->player_id)->current()->firstOrFail();
                 }
 
                 $session->update([
@@ -72,10 +72,10 @@ class GameService
                     'status' => $session->isInProgress() ? GameSessionStatus::Abandoned : $session->status,
                 ]);
 
-                return $this->createSession();
+                return $this->createSession($session->player_id);
             });
         } catch (UniqueConstraintViolationException) {
-            return GameSession::current()->firstOrFail();
+            return GameSession::ownedBy($session->player_id)->current()->firstOrFail();
         }
     }
 
@@ -260,13 +260,14 @@ class GameService
         return $teams[($turnNumber - 1) % $teams->count()];
     }
 
-    private function createSession(): GameSession
+    private function createSession(string $playerId): GameSession
     {
         if (Question::count() < self::totalTurns() || Challenge::count() < 1) {
             throw new InvalidGameActionException('The game content has not been seeded. Run the database seeders first.');
         }
 
         $session = GameSession::create([
+            'player_id' => $playerId,
             'status' => GameSessionStatus::InProgress,
             'is_current' => true,
         ]);

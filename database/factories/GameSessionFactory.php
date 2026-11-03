@@ -19,6 +19,7 @@ class GameSessionFactory extends Factory
     public function definition(): array
     {
         return [
+            'player_id' => fake()->uuid(),
             'status' => GameSessionStatus::InProgress,
             'is_current' => null,
         ];

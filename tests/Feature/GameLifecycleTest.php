@@ -2,16 +2,21 @@
 
 use App\Enums\GameSessionStatus;
 use App\Enums\TurnStatus;
+use App\Http\Middleware\IdentifyGamePlayer;
 use App\Models\GameSession;
 use App\Models\GameTurn;
 use App\Models\Question;
 use App\Models\QuestionOption;
 use Database\Seeders\DatabaseSeeder;
+use Illuminate\Support\Str;
 use Illuminate\Testing\TestResponse;
 use Inertia\Testing\AssertableInertia as Assert;
 
 beforeEach(function () {
     $this->seed(DatabaseSeeder::class);
+
+    // Every request in a test comes from the same device unless the test switches players.
+    $this->withCredentials()->withCookie(IdentifyGamePlayer::COOKIE, (string) Str::uuid());
 });
 
 /**
@@ -308,7 +313,7 @@ test('finished turns cannot be acted on again', function () {
 
 test('a turn from another session cannot be used', function () {
     $game = spin(startGame())->json('data');
-    $otherSession = GameSession::factory()->create();
+    $otherSession = GameSession::factory()->current()->create();
 
     $this->postJson(route('game.turns.complete', [$otherSession->id, $game['active_turn_id']]))->assertNotFound();
 });
@@ -433,4 +438,52 @@ test('a replaced session rejects further actions', function () {
     $this->postJson(route('game.sessions.restart', $game['id']));
 
     spin($game)->assertConflict()->assertJsonPath('message', 'This game was replaced by a newer one.');
+});
+
+test('a first visit gives the device its own player cookie', function () {
+    $this->defaultCookies = [];
+
+    $this->get(route('home'))
+        ->assertOk()
+        ->assertCookie(IdentifyGamePlayer::COOKIE);
+});
+
+test('a game started on one device is not restored on another device', function () {
+    $game = playTurn(startGame());
+
+    $this->withCookie(IdentifyGamePlayer::COOKIE, (string) Str::uuid());
+
+    $this->get(route('home'))
+        ->assertInertia(fn (Assert $page) => $page->component('Game')->where('game', null));
+    $this->getJson(route('game.current'))->assertOk()->assertJsonPath('data', null);
+
+    $otherGame = $this->postJson(route('game.sessions.store'))->assertCreated()->json('data');
+
+    expect($otherGame['id'])->not->toBe($game['id'])
+        ->and($otherGame['turns'])->toBeEmpty()
+        ->and(GameSession::current()->count())->toBe(2);
+});
+
+test('a device cannot act on or restart a game that belongs to another device', function () {
+    $game = spin(startGame())->json('data');
+
+    $this->withCookie(IdentifyGamePlayer::COOKIE, (string) Str::uuid());
+
+    spin($game)->assertNotFound();
+    answer($game, correctly: true)->assertNotFound();
+    $this->postJson(route('game.sessions.restart', $game['id']))->assertNotFound();
+
+    expect(GameSession::find($game['id'])->is_current)->toBeTrue()
+        ->and(GameTurn::find($game['active_turn_id'])->status)->toBe(TurnStatus::QuestionOpened);
+});
+
+test('restarting on one device leaves the other devices game untouched', function () {
+    $otherPlayer = (string) Str::uuid();
+    $otherGame = GameSession::factory()->current()->create(['player_id' => $otherPlayer]);
+
+    $game = startGame();
+    $this->postJson(route('game.sessions.restart', $game['id']))->assertCreated();
+
+    expect($otherGame->fresh()->is_current)->toBeTrue()
+        ->and(GameSession::ownedBy($otherPlayer)->current()->sole()->id)->toBe($otherGame->id);
 });
