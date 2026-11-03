@@ -87,7 +87,7 @@ test('a new game has three teams with zero scores and all 15 questions available
 
     expect($game['status'])->toBe('in_progress')
         ->and($game['teams'])->toHaveCount(3)
-        ->and(collect($game['teams'])->pluck('name')->all())->toBe(['Symphony', 'Orchestra', 'Harmony'])
+        ->and(collect($game['teams'])->pluck('name')->all())->toBe(['Symphony', 'Harmony', 'Orchestra'])
         ->and(collect($game['teams'])->pluck('score')->all())->toBe([0, 0, 0])
         ->and($game['turns'])->toBeEmpty()
         ->and($game['total_questions'])->toBe(15)
@@ -332,15 +332,15 @@ test('no actions are allowed once the game is completed', function () {
 test('the leaderboard ranks teams by score and shares ranks on ties', function () {
     $game = startGame();
 
-    // Symphony: 5 correct, Orchestra: 0 correct, Harmony: 0 correct.
+    // Symphony: 5 correct, Harmony: 0 correct, Orchestra: 0 correct.
     for ($i = 0; $i < 15; $i++) {
         $game = playTurn($game, correctly: $i % 3 === 0);
     }
 
     expect($game['leaderboard'])->toBe([
         ['team_id' => $game['teams'][0]['id'], 'name' => 'Symphony', 'score' => 50, 'rank' => 1, 'is_tied' => false],
-        ['team_id' => $game['teams'][1]['id'], 'name' => 'Orchestra', 'score' => 0, 'rank' => 2, 'is_tied' => true],
-        ['team_id' => $game['teams'][2]['id'], 'name' => 'Harmony', 'score' => 0, 'rank' => 2, 'is_tied' => true],
+        ['team_id' => $game['teams'][1]['id'], 'name' => 'Harmony', 'score' => 0, 'rank' => 2, 'is_tied' => true],
+        ['team_id' => $game['teams'][2]['id'], 'name' => 'Orchestra', 'score' => 0, 'rank' => 2, 'is_tied' => true],
     ]);
 });
 

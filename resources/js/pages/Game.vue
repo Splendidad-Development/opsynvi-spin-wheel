@@ -136,12 +136,8 @@ const statusText = computed(() => {
 
     const played = `${game.value.completed_turns} / ${game.value.total_questions} questions played`;
 
-    if (!currentTeam.value) {
+    if (!currentTeam.value || !activeTurn.value) {
         return played;
-    }
-
-    if (!activeTurn.value) {
-        return `Team ${currentTeam.value.name}: spin the wheel · ${played}`;
     }
 
     return isChallengePending.value
@@ -281,9 +277,9 @@ async function onResolveChallenge(outcome: ChallengeOutcome): Promise<void> {
 }
 
 async function onRestart(): Promise<void> {
-    if (apply(await restart())) {
-        questionWheel.value?.reset();
-        challengeWheel.value?.reset();
+    // The fresh session waits on the server; "Get started" on the start screen resumes it.
+    if ((await restart()) !== undefined) {
+        apply(null);
         turnModal.value = null;
         infoModal.value = null;
         isChallengeArmed.value = false;
@@ -327,14 +323,6 @@ onBeforeUnmount(() => {
 
     <GameStage>
         <div :class="cn('size-full', { 'cursor-progress': isBusy })">
-            <img
-                src="/images/game/logo.svg"
-                alt="Opsynvi macitentan/tadalafil"
-                width="210"
-                height="131"
-                class="absolute top-9 left-[79px] h-[130.41px] w-[210px]"
-            />
-
             <!-- Start screen -->
             <template v-if="!game">
                 <img

@@ -7,12 +7,12 @@ return [
     | Teams
     |--------------------------------------------------------------------------
     |
-    | Team names in turn order. The order follows the Figma "Turn before
-    | Question" frames: Symphony, then Orchestra, then Harmony.
+    | Team names in turn order, also used for the score sheet: Symphony,
+    | then Harmony, then Orchestra.
     |
     */
 
-    'teams' => ['Symphony', 'Orchestra', 'Harmony'],
+    'teams' => ['Symphony', 'Harmony', 'Orchestra'],
 
     'questions_per_team' => 5,
 
