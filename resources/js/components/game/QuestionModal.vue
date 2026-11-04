@@ -3,6 +3,7 @@ import { computed } from 'vue';
 import GameModal from '@/components/game/GameModal.vue';
 import GlassButton from '@/components/game/GlassButton.vue';
 import PrimaryButton from '@/components/game/PrimaryButton.vue';
+import { referenceMarker } from '@/lib/references';
 import { cn } from '@/lib/utils';
 import type { GameTurn, QuestionOption } from '@/types';
 
@@ -21,6 +22,7 @@ const emit = defineEmits<{
 }>();
 
 const isAnswered = computed(() => props.turn.status !== 'question_opened');
+const marker = computed(() => referenceMarker(props.turn.question.number));
 
 function optionState(
     option: QuestionOption,
@@ -109,7 +111,12 @@ function optionState(
                         "
                         class="text-[19px] leading-[1.35] text-white/85"
                     >
-                        {{ turn.explanation }}
+                        {{ turn.explanation
+                        }}<sup
+                            v-if="marker"
+                            class="ml-px text-[13px] font-semibold"
+                            >{{ marker }}</sup
+                        >
                     </span>
                 </span>
                 <img

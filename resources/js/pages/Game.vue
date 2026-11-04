@@ -6,6 +6,7 @@ import GameStage from '@/components/game/GameStage.vue';
 import GlassButton from '@/components/game/GlassButton.vue';
 import PrimaryButton from '@/components/game/PrimaryButton.vue';
 import QuestionModal from '@/components/game/QuestionModal.vue';
+import ReferencesModal from '@/components/game/ReferencesModal.vue';
 import RestartModal from '@/components/game/RestartModal.vue';
 import ResultsModal from '@/components/game/ResultsModal.vue';
 import ScoreSheetModal from '@/components/game/ScoreSheetModal.vue';
@@ -36,7 +37,7 @@ const {
 } = useGame(props.game);
 
 type TurnModalName = 'turn' | 'question' | 'challenge';
-type InfoModalName = 'scores' | 'results' | 'restart';
+type InfoModalName = 'references' | 'scores' | 'results' | 'restart';
 
 const turnModal = ref<TurnModalName | null>(null);
 const infoModal = ref<InfoModalName | null>(null);
@@ -333,7 +334,7 @@ onBeforeUnmount(() => {
                     class="absolute top-[30.68px] left-[1498.68px] h-[241px] w-[424px]"
                 />
                 <div
-                    class="absolute top-[780px] left-1/2 flex w-[323px] -translate-x-1/2 flex-col items-center gap-4 rounded-[48px] bg-[rgba(10,31,68,0.95)] px-6 pt-5 pb-6"
+                    class="absolute top-[820px] left-1/2 flex w-[323px] -translate-x-1/2 flex-col items-center gap-4 rounded-[48px] bg-[rgba(10,31,68,0.95)] px-6 pt-5 pb-6"
                 >
                     <p class="text-[36px] font-bold text-gold">
                         Spin the wheel
@@ -356,11 +357,10 @@ onBeforeUnmount(() => {
 
                 <div class="absolute top-[52px] right-[259.44px] flex gap-3">
                     <GlassButton
-                        tone="dark"
-                        :disabled="isLocked"
-                        @click="infoModal = 'restart'"
+                        :disabled="spinningWheel !== null"
+                        @click="infoModal = 'references'"
                     >
-                        Restart
+                        References
                     </GlassButton>
                     <GlassButton
                         tone="dark"
@@ -480,14 +480,19 @@ onBeforeUnmount(() => {
                     />
                 </template>
 
+                <ReferencesModal
+                    v-if="infoModal === 'references'"
+                    @close="infoModal = null"
+                />
                 <ScoreSheetModal
-                    v-if="infoModal === 'scores'"
+                    v-else-if="infoModal === 'scores'"
                     :game="game"
                     @close="infoModal = null"
                 />
                 <ResultsModal
                     v-else-if="infoModal === 'results'"
                     :game="game"
+                    :can-restart="!isLocked"
                     @close="infoModal = null"
                     @restart="infoModal = 'restart'"
                 />

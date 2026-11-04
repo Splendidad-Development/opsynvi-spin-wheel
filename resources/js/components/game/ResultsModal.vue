@@ -6,7 +6,10 @@ import PrimaryButton from '@/components/game/PrimaryButton.vue';
 import { cn } from '@/lib/utils';
 import type { GameState } from '@/types';
 
-const props = defineProps<{ game: GameState }>();
+const props = withDefaults(
+    defineProps<{ game: GameState; canRestart?: boolean }>(),
+    { canRestart: true },
+);
 
 const emit = defineEmits<{ close: []; restart: [] }>();
 
@@ -93,7 +96,7 @@ const subtitle = computed(() => {
         </div>
         <div class="flex items-center gap-4">
             <GlassButton @click="emit('close')">Done</GlassButton>
-            <PrimaryButton v-if="game.is_completed" @click="emit('restart')">
+            <PrimaryButton :disabled="!canRestart" @click="emit('restart')">
                 Restart
             </PrimaryButton>
         </div>
