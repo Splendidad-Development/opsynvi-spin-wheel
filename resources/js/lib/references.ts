@@ -58,11 +58,7 @@ export const questionReferences: QuestionReference[] = [
         question: 7,
         marker: '*,1',
         note: '*Adherence defined by proportion of days covered at 180 days. The mean number of hospitalisations per patient is presented.²',
-        references: [
-            'Frantz RP et al. Pulm Circ 2020; 10(1):1–11.',
-            'Paoli CJ et al. J Health Econ Outcomes Res 2024; 11(1):8–22.',
-        ],
-        inline: true,
+        references: ['Frantz RP et al. Pulm Circ 2020; 10(1):1–11.'],
     },
     { question: 8, marker: '*,1', note: ESC_ERS_NOTE, references: [HUMBERT] },
     { question: 9, marker: '1', references: [HUMBERT] },
