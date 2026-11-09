@@ -39,5 +39,8 @@ onBeforeUnmount(() => window.removeEventListener('resize', updateScale));
         >
             <slot />
         </div>
+
+        <!-- Content pinned to the screen edges rather than the scaled stage. -->
+        <slot name="overlay" :scale="scale" />
     </div>
 </template>

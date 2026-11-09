@@ -520,5 +520,18 @@ onBeforeUnmount(() => {
                 </button>
             </div>
         </div>
+
+        <template #overlay="{ scale }">
+            <p
+                v-if="!game"
+                class="pointer-events-none absolute right-[15px] origin-top-right font-[family-name:Arial,Helvetica,sans-serif] text-[12.5px] leading-none whitespace-nowrap text-white/85 [writing-mode:vertical-rl]"
+                :style="{
+                    top: `calc(50% + ${99 * scale}px)`,
+                    transform: `scale(${scale})`,
+                }"
+            >
+                CP-611826 - Preparation date: November-2026.
+            </p>
+        </template>
     </GameStage>
 </template>
