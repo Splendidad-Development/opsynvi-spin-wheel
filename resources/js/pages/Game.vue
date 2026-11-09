@@ -376,6 +376,13 @@ onBeforeUnmount(() => {
                     >
                         Score sheet
                     </GlassButton>
+                    <GlassButton
+                        tone="dark"
+                        :disabled="isLocked"
+                        @click="infoModal = 'restart'"
+                    >
+                        Restart
+                    </GlassButton>
                 </div>
 
                 <div
