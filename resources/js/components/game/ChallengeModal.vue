@@ -17,19 +17,25 @@ const emit = defineEmits<{
 <template>
     <GameModal
         v-if="turn.challenge"
-        class="w-[874px] gap-5 bg-navy px-10 py-5"
+        class="w-[1000px] gap-4 bg-navy px-14 py-9"
         @close="emit('close')"
     >
-        <p class="text-[23px] font-bold">
+        <p class="text-[26px] font-bold text-gold">
             Challenge {{ turn.challenge.number }}
         </p>
-        <p class="w-[644px] text-center text-[23px] font-medium">
+        <p
+            v-if="turn.challenge.title"
+            class="text-center text-[44px] font-extrabold"
+        >
+            {{ turn.challenge.title }}
+        </p>
+        <p class="w-full text-center text-[26px] leading-[1.35] font-medium">
             {{
                 turn.challenge.description ??
                 'Your host will present this challenge.'
             }}
         </p>
-        <div class="flex items-center gap-4">
+        <div class="mt-6 flex items-center gap-4">
             <PrimaryButton
                 variant="accept"
                 class="w-[389px]"

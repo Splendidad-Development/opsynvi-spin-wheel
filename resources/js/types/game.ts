@@ -40,6 +40,7 @@ export type GameTurn = {
     explanation: string | null;
     challenge: {
         number: number;
+        title: string | null;
         description: string | null;
     } | null;
     challenge_outcome: ChallengeOutcome | null;

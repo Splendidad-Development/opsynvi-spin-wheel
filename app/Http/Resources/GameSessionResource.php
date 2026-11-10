@@ -98,6 +98,7 @@ class GameSessionResource extends JsonResource
             'explanation' => $isRevealed ? $turn->question->explanation : null,
             'challenge' => $turn->challenge ? [
                 'number' => $turn->challenge->number,
+                'title' => $turn->challenge->title,
                 'description' => $turn->challenge->description,
             ] : null,
             'challenge_outcome' => $turn->challenge_outcome?->value,

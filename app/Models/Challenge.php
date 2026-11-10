@@ -11,11 +11,12 @@ use Illuminate\Support\Carbon;
 /**
  * @property int $id
  * @property int $number
+ * @property string|null $title
  * @property string|null $description
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  */
-#[Fillable(['number', 'description'])]
+#[Fillable(['number', 'title', 'description'])]
 class Challenge extends Model
 {
     /** @use HasFactory<ChallengeFactory> */

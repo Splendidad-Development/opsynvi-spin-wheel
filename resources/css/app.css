@@ -9,6 +9,8 @@
         'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol',
         'Noto Color Emoji';
 
+    --font-legal: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+
     /* Opsynvi palette (Figma: UAE_J&J OPSYNVI® Internal Launch) */
     --color-navy: #0a1f44;
     --color-gold: #fcb61a;

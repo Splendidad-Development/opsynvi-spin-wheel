@@ -157,12 +157,12 @@ class QuestionSeeder extends Seeder
                 'prompt' => 'According to the 2022 ESC/ERS guidelines footnote, what initial regimen is recommended for high-risk PAH patients without cardiopulmonary comorbidities?',
                 'options' => [
                     'A' => 'ERA monotherapy only',
-                    'B' => 'PDE-5i monotherapy only',
-                    'C' => 'ERA + PDE-5i + parenteral prostacyclin analogues',
+                    'B' => 'PDE-5I monotherapy only',
+                    'C' => 'ERA + PDE-5I + parenteral prostacyclin analogues',
                     'D' => 'Oral prostacyclin analogue monotherapy',
                 ],
                 'correct' => 'C',
-                'explanation' => 'The guidelines recommend ERA + PDE-5i for low- or intermediate-risk patients, and ERA + PDE-5i + parenteral prostacyclin analogues for high-risk patients.',
+                'explanation' => 'The guidelines recommend ERA + PDE-5I for low- or intermediate-risk patients, and ERA + PDE-5I + parenteral prostacyclin analogues for high-risk patients.',
             ],
             12 => [
                 'prompt' => 'In the A DUE study, Opsynvi reduced PVR by up to what percentage from baseline at Week 16?',

@@ -21,6 +21,7 @@ export default defineConfig({
                         { weight: 700, style: 'italic' },
                     ],
                 }),
+                bunny('Inter', { weights: [400] }),
             ],
         }),
         inertia(),

@@ -34,11 +34,18 @@ test('the seeders can be run repeatedly without duplicating content', function (
         ->and(Challenge::count())->toBe(15);
 });
 
-test('re-seeding keeps challenge descriptions entered after the first seed', function () {
-    $this->seed(DatabaseSeeder::class);
-    Challenge::where('number', 5)->update(['description' => 'Act out the Opsynvi tagline.']);
-
+test('the seeders load the 15 challenges with a title and an instruction each', function () {
     $this->seed(DatabaseSeeder::class);
 
-    expect(Challenge::where('number', 5)->value('description'))->toBe('Act out the Opsynvi tagline.');
+    expect(Challenge::pluck('number')->sort()->values()->all())->toBe(range(1, 15));
+
+    Challenge::all()->each(function (Challenge $challenge) {
+        expect($challenge->title)->not->toBeEmpty()
+            ->and($challenge->description)->not->toBeEmpty();
+    });
+
+    $fourth = Challenge::where('number', 4)->firstOrFail();
+
+    expect($fourth->title)->toBe('Air Orchestra')
+        ->and($fourth->description)->toBe('Conduct an imaginary orchestra for 10 seconds while your team follows your movements.');
 });
