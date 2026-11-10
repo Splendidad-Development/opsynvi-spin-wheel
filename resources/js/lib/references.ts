@@ -80,11 +80,7 @@ export const questionReferences: QuestionReference[] = [
     {
         question: 15,
         marker: '1–3',
-        references: [
-            SMPC,
-            GRUNIG,
-            'Adcirca UAE SmPC, January 2026. Available at: https://www.ema.europa.eu/en/documents/product-information/adcirca-epar-product-information_en.pdf (last accessed March 2024).',
-        ],
+        references: [SMPC, GRUNIG, 'Adcirca UAE SmPC, January 2026.'],
     },
 ];
 
