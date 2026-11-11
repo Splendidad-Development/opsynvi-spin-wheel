@@ -48,9 +48,17 @@ class GameSessionResource extends JsonResource
             ? $this->teams->firstWhere('id', $latestTurn->game_team_id)
             : null;
 
-        $selectableTeamIds = $isInProgress && $currentTeam === null
-            ? $this->teams->filter(fn (GameTeam $team) => $turnCounts->get($team->id, 0) < $questionsPerTeam)->pluck('id')->values()
+        $remainingTeams = $isInProgress && $currentTeam === null
+            ? $this->teams->filter(fn (GameTeam $team) => $turnCounts->get($team->id, 0) < $questionsPerTeam)->values()
             : collect();
+
+        // With a single team left there is nothing to choose: it simply plays next.
+        if ($remainingTeams->count() === 1) {
+            $currentTeam = $remainingTeams->first();
+            $remainingTeams = collect();
+        }
+
+        $selectableTeamIds = $remainingTeams->pluck('id');
 
         return [
             'id' => $this->id,

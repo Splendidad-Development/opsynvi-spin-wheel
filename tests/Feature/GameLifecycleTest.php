@@ -250,6 +250,38 @@ test('after a team finishes, the host picks the next team from those that have n
     expect(activeTurn($game)['team_id'])->toBe($orchestra);
 });
 
+test('the last remaining team plays next without being picked', function () {
+    $game = startGame();
+    [$symphony, $harmony, $orchestra] = collect($game['teams'])->pluck('id')->all();
+
+    $game = spin($game, teamId: $orchestra)->json('data');
+    $game = answer($game, correctly: true)->json('data');
+    $game = finishTurn($game)->json('data');
+
+    for ($i = 0; $i < 4; $i++) {
+        $game = playTurn($game);
+    }
+
+    $game = spin($game, teamId: $symphony)->json('data');
+    $game = answer($game, correctly: true)->json('data');
+    $game = finishTurn($game)->json('data');
+
+    for ($i = 0; $i < 4; $i++) {
+        $game = playTurn($game);
+    }
+
+    expect($game['current_team_id'])->toBe($harmony)
+        ->and($game['selectable_team_ids'])->toBe([]);
+
+    spin($game, teamId: $symphony)
+        ->assertConflict()
+        ->assertJsonPath('message', 'It is Team Harmony\'s turn.');
+
+    $game = spin($game)->assertOk()->json('data');
+
+    expect(activeTurn($game)['team_id'])->toBe($harmony);
+});
+
 test('a team that is not part of the game cannot be picked', function () {
     $game = startGame();
 

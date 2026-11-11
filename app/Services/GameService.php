@@ -262,23 +262,31 @@ class GameService
     }
 
     /**
-     * The team that is part-way through its questions and must keep playing, or null when the
-     * host is free to pick the next team.
+     * The team that must play next, or null when the host is free to pick it.
+     *
+     * That is the team part-way through its questions or, once only one team has questions
+     * left, that last team.
      */
     public function teamInPlay(GameSession $session): ?GameTeam
     {
+        $questionsPerTeam = (int) config('game.questions_per_team');
         $latestTurn = $session->turns()->reorder('turn_number', 'desc')->first();
 
-        if (! $latestTurn) {
-            return null;
+        if ($latestTurn) {
+            $team = $latestTurn->team;
+
+            $isTeamFinished = $latestTurn->status->isResolved()
+                && $team->turns()->count() >= $questionsPerTeam;
+
+            if (! $isTeamFinished) {
+                return $team;
+            }
         }
 
-        $team = $latestTurn->team;
+        $remainingTeams = $session->teams()->withCount('turns')->get()
+            ->filter(fn (GameTeam $team) => $team->turns_count < $questionsPerTeam);
 
-        $isTeamFinished = $latestTurn->status->isResolved()
-            && $team->turns()->count() >= (int) config('game.questions_per_team');
-
-        return $isTeamFinished ? null : $team;
+        return $remainingTeams->count() === 1 ? $remainingTeams->first() : null;
     }
 
     private function createSession(string $playerId): GameSession
