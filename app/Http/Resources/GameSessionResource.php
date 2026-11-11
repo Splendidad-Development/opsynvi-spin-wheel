@@ -36,13 +36,21 @@ class GameSessionResource extends JsonResource
         $turns = $this->turns;
         $activeTurn = $turns->last(fn (GameTurn $turn) => ! $turn->status->isResolved());
         $isInProgress = $this->status === GameSessionStatus::InProgress;
-        $nextTurnNumber = $turns->count() + 1;
+        $questionsPerTeam = (int) config('game.questions_per_team');
+        $turnCounts = $turns->countBy('game_team_id');
+        $latestTurn = $turns->last();
 
-        $currentTeam = match (true) {
-            $activeTurn !== null => $this->teams->firstWhere('id', $activeTurn->game_team_id),
-            $isInProgress && $this->teams->isNotEmpty() && $nextTurnNumber <= GameService::totalTurns() => $this->teams[($nextTurnNumber - 1) % $this->teams->count()],
-            default => null,
-        };
+        // A team keeps playing until its whole set is done; after that the host picks the next team.
+        $isLatestTeamInPlay = $latestTurn !== null
+            && ($activeTurn !== null || $turnCounts->get($latestTurn->game_team_id, 0) < $questionsPerTeam);
+
+        $currentTeam = $isInProgress && $isLatestTeamInPlay
+            ? $this->teams->firstWhere('id', $latestTurn->game_team_id)
+            : null;
+
+        $selectableTeamIds = $isInProgress && $currentTeam === null
+            ? $this->teams->filter(fn (GameTeam $team) => $turnCounts->get($team->id, 0) < $questionsPerTeam)->pluck('id')->values()
+            : collect();
 
         return [
             'id' => $this->id,
@@ -53,6 +61,7 @@ class GameSessionResource extends JsonResource
             'points_per_question' => GameService::pointsPerQuestion(),
             'completed_turns' => $turns->where('status', TurnStatus::Completed)->count(),
             'current_team_id' => $currentTeam?->id,
+            'selectable_team_ids' => $selectableTeamIds,
             'active_turn_id' => $activeTurn?->id,
             'teams' => $this->teams->map(fn (GameTeam $team) => [
                 'id' => $team->id,

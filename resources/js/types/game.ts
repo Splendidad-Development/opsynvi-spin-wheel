@@ -62,7 +62,10 @@ export type GameState = {
     questions_per_team: number;
     points_per_question: number;
     completed_turns: number;
+    /** The team part-way through its questions; null while the host picks the next team. */
     current_team_id: number | null;
+    /** Teams the host may pick next; empty while a team is in play. */
+    selectable_team_ids: number[];
     active_turn_id: number | null;
     teams: GameTeam[];
     turns: GameTurn[];

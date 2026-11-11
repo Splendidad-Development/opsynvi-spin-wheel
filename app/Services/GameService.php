@@ -80,7 +80,10 @@ class GameService
     }
 
     /**
-     * Draw a random, not yet used question for the team whose turn it is.
+     * Draw a random, not yet used question for the given team.
+     *
+     * A team plays all of its questions back to back. While a team is part-way through its set,
+     * only that team may spin; once it has finished, the host picks any team that has not played yet.
      */
     public function spinQuestion(GameSession $session, int $teamId): GameTurn
     {
@@ -102,10 +105,18 @@ class GameService
                 throw new InvalidGameActionException('All questions have already been played.', $session);
             }
 
-            $team = $this->teamForTurn($session, $turnNumber);
+            $team = $this->teamInPlay($session) ?? $session->teams()->find($teamId);
+
+            if (! $team) {
+                throw new InvalidGameActionException('Choose one of the game teams.', $session);
+            }
 
             if ($team->id !== $teamId) {
                 throw new InvalidGameActionException("It is Team {$team->name}'s turn.", $session);
+            }
+
+            if ($team->turns()->count() >= (int) config('game.questions_per_team')) {
+                throw new InvalidGameActionException("Team {$team->name} has already played all its questions.", $session);
             }
 
             $question = Question::query()
@@ -251,13 +262,23 @@ class GameService
     }
 
     /**
-     * The team that plays the given turn: teams rotate in position order (1 → 2 → 3 → 1 …).
+     * The team that is part-way through its questions and must keep playing, or null when the
+     * host is free to pick the next team.
      */
-    public function teamForTurn(GameSession $session, int $turnNumber): GameTeam
+    public function teamInPlay(GameSession $session): ?GameTeam
     {
-        $teams = $session->teams()->get();
+        $latestTurn = $session->turns()->reorder('turn_number', 'desc')->first();
 
-        return $teams[($turnNumber - 1) % $teams->count()];
+        if (! $latestTurn) {
+            return null;
+        }
+
+        $team = $latestTurn->team;
+
+        $isTeamFinished = $latestTurn->status->isResolved()
+            && $team->turns()->count() >= (int) config('game.questions_per_team');
+
+        return $isTeamFinished ? null : $team;
     }
 
     private function createSession(string $playerId): GameSession

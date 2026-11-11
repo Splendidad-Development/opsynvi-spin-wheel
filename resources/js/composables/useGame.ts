@@ -160,11 +160,9 @@ export function useGame(initialGame: GameState | null) {
         start: () => run(startRoute()),
         restart: () =>
             game.value ? run(restartRoute(game.value.id)) : run(startRoute()),
-        spinQuestion: () =>
-            game.value && game.value.current_team_id
-                ? run(spinRoute(game.value.id), {
-                      team_id: game.value.current_team_id,
-                  })
+        spinQuestion: (teamId: number) =>
+            game.value
+                ? run(spinRoute(game.value.id), { team_id: teamId })
                 : Promise.resolve(undefined),
         answer: (turnId: number, optionId: number) =>
             game.value

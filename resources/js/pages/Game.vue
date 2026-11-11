@@ -11,6 +11,7 @@ import RestartModal from '@/components/game/RestartModal.vue';
 import ResultsModal from '@/components/game/ResultsModal.vue';
 import ScoreSheetModal from '@/components/game/ScoreSheetModal.vue';
 import SpinWheel from '@/components/game/SpinWheel.vue';
+import TeamPickerModal from '@/components/game/TeamPickerModal.vue';
 import TurnModal from '@/components/game/TurnModal.vue';
 import { useGame } from '@/composables/useGame';
 import { cn } from '@/lib/utils';
@@ -112,11 +113,47 @@ const activeTeamName = computed(
             ?.name ?? '',
 );
 
+/** The team the host picked to play next; only kept on screen until its first spin. */
+const chosenTeamId = ref<number | null>(null);
+
+const selectableTeams = computed(
+    () =>
+        game.value?.teams.filter((team) =>
+            game.value?.selectable_team_ids.includes(team.id),
+        ) ?? [],
+);
+
+/** The team that spins next: the one part-way through its questions, or the host's pick. */
+const playingTeam = computed(
+    () =>
+        currentTeam.value ??
+        selectableTeams.value.find((team) => team.id === chosenTeamId.value) ??
+        null,
+);
+
+const isChoosingTeam = computed(
+    () =>
+        isInProgress.value &&
+        playingTeam.value === null &&
+        selectableTeams.value.length > 0,
+);
+
+/** Question position within the playing team's set (1–5). */
+const playingTeamQuestion = computed(
+    () =>
+        (game.value?.turns.filter(
+            (turn) =>
+                turn.team_id === playingTeam.value?.id &&
+                turn.status === 'completed',
+        ).length ?? 0) + 1,
+);
+
 const canSpinQuestion = computed(
     () =>
         isInProgress.value &&
         !isLocked.value &&
-        (activeTurn.value === null || isQuestionPhase.value),
+        (isQuestionPhase.value ||
+            (activeTurn.value === null && playingTeam.value !== null)),
 );
 const canSpinChallenge = computed(
     () =>
@@ -137,7 +174,13 @@ const statusText = computed(() => {
 
     const played = `${game.value.completed_turns} / ${game.value.total_questions} questions played`;
 
-    if (!currentTeam.value || !activeTurn.value) {
+    if (!activeTurn.value) {
+        return playingTeam.value
+            ? `Team ${playingTeam.value.name} · Spin for question ${playingTeamQuestion.value} of ${game.value.questions_per_team} · ${played}`
+            : played;
+    }
+
+    if (!currentTeam.value) {
         return played;
     }
 
@@ -206,14 +249,19 @@ async function onQuestionWheel(): Promise<void> {
         return;
     }
 
+    if (!playingTeam.value) {
+        return;
+    }
+
     spinningWheel.value = 'question';
 
-    const state = await spinQuestion();
+    const state = await spinQuestion(playingTeam.value.id);
     const turn = state?.turns.find((item) => item.id === state.active_turn_id);
 
     if (state && turn) {
         await questionWheel.value?.spinTo(turn.question.number);
         apply(state);
+        chosenTeamId.value = null;
         turnModal.value = 'turn';
     }
 
@@ -281,6 +329,7 @@ async function onRestart(): Promise<void> {
     // The fresh session waits on the server; "Get started" on the start screen resumes it.
     if ((await restart()) !== undefined) {
         apply(null);
+        chosenTeamId.value = null;
         turnModal.value = null;
         infoModal.value = null;
         isChallengeArmed.value = false;
@@ -453,12 +502,33 @@ onBeforeUnmount(() => {
                     </section>
                 </div>
 
-                <p
-                    class="absolute top-[890px] left-1/2 -translate-x-1/2 rounded-[60px] bg-[rgba(10,31,68,0.8)] px-8 py-3 text-[22px] font-semibold whitespace-nowrap text-white"
-                    aria-live="polite"
+                <div
+                    class="absolute top-[890px] left-1/2 flex -translate-x-1/2 items-center gap-6 rounded-[60px] bg-[rgba(10,31,68,0.8)] px-8 py-3 text-[22px] font-semibold whitespace-nowrap text-white"
                 >
-                    {{ statusText }}
-                </p>
+                    <p aria-live="polite">{{ statusText }}</p>
+                    <button
+                        v-if="chosenTeamId !== null && !currentTeam"
+                        type="button"
+                        class="text-gold underline underline-offset-4 hover:brightness-110 disabled:opacity-50"
+                        :disabled="isLocked"
+                        @click="chosenTeamId = null"
+                    >
+                        Change team
+                    </button>
+                </div>
+
+                <TeamPickerModal
+                    v-if="
+                        isChoosingTeam &&
+                        !infoModal &&
+                        !turnModal &&
+                        spinningWheel === null
+                    "
+                    :teams="selectableTeams"
+                    :is-first-team="game.turns.length === 0"
+                    :questions-per-team="game.questions_per_team"
+                    @choose="chosenTeamId = $event"
+                />
 
                 <template v-if="activeTurn && !infoModal">
                     <TurnModal

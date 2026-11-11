@@ -28,12 +28,14 @@ function startGame(): array
 }
 
 /**
+ * Spin for the given team, or else for the team in play, or else for the first team still free to pick.
+ *
  * @param  array<string, mixed>  $game
  */
 function spin(array $game, ?int $teamId = null): TestResponse
 {
     return test()->postJson(route('game.turns.store', $game['id']), [
-        'team_id' => $teamId ?? $game['current_team_id'],
+        'team_id' => $teamId ?? $game['current_team_id'] ?? $game['selectable_team_ids'][0] ?? null,
     ]);
 }
 
@@ -91,10 +93,11 @@ test('a new game has three teams with zero scores and all 15 questions available
         ->and(collect($game['teams'])->pluck('score')->all())->toBe([0, 0, 0])
         ->and($game['turns'])->toBeEmpty()
         ->and($game['total_questions'])->toBe(15)
-        ->and($game['current_team_id'])->toBe($game['teams'][0]['id']);
+        ->and($game['current_team_id'])->toBeNull()
+        ->and($game['selectable_team_ids'])->toBe(collect($game['teams'])->pluck('id')->all());
 });
 
-test('a full game assigns every question exactly once, five per team, in fixed turn order', function () {
+test('a full game assigns every question exactly once, with each team playing its five in a row', function () {
     $game = startGame();
 
     for ($i = 0; $i < 15; $i++) {
@@ -105,11 +108,12 @@ test('a full game assigns every question exactly once, five per team, in fixed t
     $teamIds = collect($game['teams'])->pluck('id');
 
     expect($turns->pluck('question.number')->sort()->values()->all())->toBe(range(1, 15))
-        ->and($turns->pluck('team_id')->all())->toBe($teamIds->concat($teamIds)->concat($teamIds)->concat($teamIds)->concat($teamIds)->all())
+        ->and($turns->pluck('team_id')->all())->toBe($teamIds->flatMap(fn (int $id) => array_fill(0, 5, $id))->all())
         ->and($turns->countBy('team_id')->values()->all())->toBe([5, 5, 5])
         ->and($game['status'])->toBe('completed')
         ->and($game['is_completed'])->toBeTrue()
         ->and($game['current_team_id'])->toBeNull()
+        ->and($game['selectable_team_ids'])->toBe([])
         ->and(collect($game['teams'])->pluck('score')->all())->toBe([50, 50, 50]);
 });
 
@@ -133,7 +137,6 @@ test('questions are drawn in a random order', function () {
 test('a correct answer awards 10 points and a wrong answer awards none', function () {
     $game = startGame();
     $symphony = $game['teams'][0]['id'];
-    $orchestra = $game['teams'][1]['id'];
 
     $game = playTurn($game, correctly: true);
     $game = playTurn($game, correctly: false);
@@ -141,7 +144,6 @@ test('a correct answer awards 10 points and a wrong answer awards none', functio
     $scores = collect($game['teams'])->pluck('score', 'id');
 
     expect($scores[$symphony])->toBe(10)
-        ->and($scores[$orchestra])->toBe(0)
         ->and($game['turns'][0]['points'])->toBe(10)
         ->and($game['turns'][1]['points'])->toBe(0)
         ->and($game['turns'][1]['is_correct'])->toBeFalse();
@@ -195,12 +197,65 @@ test('an answer must be one of the drawn question options', function () {
     ])->assertUnprocessable()->assertJsonValidationErrors('option_id');
 });
 
-test('the wrong team cannot spin', function () {
+test('the host can start with any team', function () {
+    $game = startGame();
+    $orchestra = $game['teams'][2]['id'];
+
+    $game = spin($game, teamId: $orchestra)->assertOk()->json('data');
+
+    expect(activeTurn($game)['team_id'])->toBe($orchestra)
+        ->and($game['current_team_id'])->toBe($orchestra)
+        ->and($game['selectable_team_ids'])->toBe([]);
+});
+
+test('a team keeps playing until all five of its questions are done', function () {
+    $game = startGame();
+    $harmony = $game['teams'][1]['id'];
+
+    $game = spin($game, teamId: $harmony)->assertOk()->json('data');
+    $game = answer($game, correctly: true)->json('data');
+    $game = finishTurn($game)->assertOk()->json('data');
+
+    expect($game['current_team_id'])->toBe($harmony);
+
+    spin($game, teamId: $game['teams'][0]['id'])
+        ->assertConflict()
+        ->assertJsonPath('message', 'It is Team Harmony\'s turn.');
+
+    expect(GameTurn::count())->toBe(1);
+});
+
+test('after a team finishes, the host picks the next team from those that have not played', function () {
+    $game = startGame();
+    [$symphony, $harmony, $orchestra] = collect($game['teams'])->pluck('id')->all();
+
+    $game = spin($game, teamId: $harmony)->json('data');
+    $game = answer($game, correctly: true)->json('data');
+    $game = finishTurn($game)->json('data');
+
+    for ($i = 0; $i < 4; $i++) {
+        $game = playTurn($game);
+    }
+
+    expect($game['current_team_id'])->toBeNull()
+        ->and($game['selectable_team_ids'])->toBe([$symphony, $orchestra])
+        ->and(collect($game['turns'])->where('team_id', $harmony)->pluck('team_turn_number')->all())->toBe([1, 2, 3, 4, 5]);
+
+    spin($game, teamId: $harmony)
+        ->assertConflict()
+        ->assertJsonPath('message', 'Team Harmony has already played all its questions.');
+
+    $game = spin($game, teamId: $orchestra)->assertOk()->json('data');
+
+    expect(activeTurn($game)['team_id'])->toBe($orchestra);
+});
+
+test('a team that is not part of the game cannot be picked', function () {
     $game = startGame();
 
-    spin($game, teamId: $game['teams'][1]['id'])
+    spin($game, teamId: 999_999)
         ->assertConflict()
-        ->assertJsonPath('message', 'It is Team Symphony\'s turn.');
+        ->assertJsonPath('message', 'Choose one of the game teams.');
 
     expect(GameTurn::count())->toBe(0);
 });
@@ -243,7 +298,7 @@ test('an accepted challenge awards 10 points and ends the turn', function () {
         ->and($game['turns'][0]['status'])->toBe('completed')
         ->and($game['turns'][0]['challenge_outcome'])->toBe('accepted')
         ->and($game['active_turn_id'])->toBeNull()
-        ->and($game['current_team_id'])->toBe($game['teams'][1]['id']);
+        ->and($game['current_team_id'])->toBe($game['teams'][0]['id']);
 
     // The challenged question stays used for the rest of the game.
     for ($i = 0; $i < 14; $i++) {
@@ -332,9 +387,9 @@ test('no actions are allowed once the game is completed', function () {
 test('the leaderboard ranks teams by score and shares ranks on ties', function () {
     $game = startGame();
 
-    // Symphony: 5 correct, Harmony: 0 correct, Orchestra: 0 correct.
+    // Teams play their five in a row: Symphony 5 correct, Harmony 0 correct, Orchestra 0 correct.
     for ($i = 0; $i < 15; $i++) {
-        $game = playTurn($game, correctly: $i % 3 === 0);
+        $game = playTurn($game, correctly: $i < 5);
     }
 
     expect($game['leaderboard'])->toBe([
@@ -348,7 +403,8 @@ test('a three-way tie gives every team first place', function () {
     $game = startGame();
 
     for ($i = 0; $i < 15; $i++) {
-        $game = playTurn($game, correctly: $i < 3);
+        // The first question of each team's set is the only correct one.
+        $game = playTurn($game, correctly: $i % 5 === 0);
     }
 
     expect(collect($game['leaderboard'])->pluck('rank')->all())->toBe([1, 1, 1]);
@@ -376,8 +432,8 @@ test('reloading restores the exact state of the current session', function () {
             ->where('game.active_turn_id', $game['active_turn_id'])
             ->where('game.turns.1.question.number', $game['turns'][1]['question']['number'])
             ->where('game.turns.1.status', 'answered')
-            ->where('game.teams.0.score', 10)
-            ->where('game.teams.1.score', 10)
+            ->where('game.teams.0.score', 20)
+            ->where('game.teams.1.score', 0)
         );
 
     $this->getJson(route('game.current'))->assertOk()->assertJsonPath('data', $game);
